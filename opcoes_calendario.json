@@ -1,0 +1,26 @@
+{
+    "editable": "true",
+    "selectable": "true",
+    "headerToolbar": {
+        "left": "today prev,next",
+        "center": "title",
+        "right": "dayGridMonth,resourceTimelineMonth"
+    },
+    "slotMinTime": "00:00:00",
+    "slotMaxTime": "23:59:59",
+    "initialView": "dayGridMonth",
+    "resourceGroupField": "building",
+    "resources": [
+        {"id": 1, "building": "Coordenadores", "title": "Gestor"},
+        {"id": 2, "building": "Funcionarios", "title": "Mikael"},
+        {"id": 3, "building": "Funcionarios", "title": "Matheus"},
+        {"id": 4, "building": "Funcionarios", "title": "Rayssa"},
+        {"id": 5, "building": "Funcionarios", "title": "Rafael"}
+    ],
+    "buttonText": {
+        "today": "Hoje",
+        "dayGridMonth": "Calendario",
+        "resourceTimelineMonth": "Equipes"
+    },
+    "locale": "pt-br"
+}
