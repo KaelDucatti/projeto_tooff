@@ -2,3 +2,4 @@ streamlit
 sqlalchemy
 werkzeug
 streamlit_calendar
+holidays
