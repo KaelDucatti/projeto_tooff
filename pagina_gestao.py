@@ -113,7 +113,7 @@ def tab_gestao_usuarios():
         eventos_usuario = [
             {
                 "id": evento.id,
-                "usuário": usuario.nome,
+                "usuário": evento.usuario.nome,
                 "tipo de evento": evento.tipo_ausencia,
                 "data de inicio": evento.data_inicio_evento,
                 "data de fim": evento.data_fim_evento,
