@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import datetime
 
 from pandas import DataFrame
 
@@ -15,7 +16,7 @@ def tab_gestao_usuarios():
     eventos = ler_eventos_usuario()
 
     (tab_visualizar, tab_criar, tab_modificar, tab_deletar, tab_deletar_evento) = (
-        st.tabs(["Usuários", "Criar Usuário", "Alterar Usuário", "Excluir Usuário", "Excluir Evento"])
+        st.tabs(["Usuários", "Criar Usuário", "Alterar Usuário", "Excluir Usuário", "Eventos"])
     )
 
     # Verifique o conteúdo de eventos_usuario
@@ -112,7 +113,8 @@ def tab_gestao_usuarios():
         eventos_usuario = [
             {
                 "id": evento.id,
-                "id do usuário": evento.id_usuario,
+                "usuário": usuario.nome,
+                "tipo de evento": evento.tipo_ausencia,
                 "data de inicio": evento.data_inicio_evento,
                 "data de fim": evento.data_fim_evento,
             }
@@ -149,5 +151,5 @@ def pagina_gestao():
             with cols[0]:
                 st.markdown(f"### {usuario.nome}")
             with cols[1]:
-                ferias_a_solicitar = usuario.ferias_a_solicitar()
-                st.markdown(f"##### Dias de férias a solicitar: {ferias_a_solicitar}")
+                ferias_tiradas = usuario.ferias_tiradas()
+                st.markdown(f"##### Ferias tiradas em {datetime.now().year}: `{ferias_tiradas}`")

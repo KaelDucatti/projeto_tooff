@@ -1,6 +1,6 @@
 from typing import List
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import streamlit as st
 from sqlalchemy import create_engine, String, Boolean, Integer, select, ForeignKey, Enum
 from sqlalchemy.orm import mapped_column, DeclarativeBase, Mapped, Session, relationship
@@ -29,6 +29,13 @@ class Base(DeclarativeBase):
 
 # Tabela de Usuários
 class Usuario(Base):
+    TIPO_AUSENCIA_CORES = {
+        "Férias": "green",
+        "Assiduidade": "red",
+        "Plantão": "brown",
+        "Licença Maternidade/Paternidade": "purple"
+    }
+
     __tablename__ = "tabela_usuario"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -51,33 +58,18 @@ class Usuario(Base):
         return check_password_hash(self.senha, senha)
 
     def listar_eventos_calendario(self):
-        # Dicionário para mapear tipos de ausência a cores
-        tipo_ausencia_cores = {
-            "Férias": "green",
-            "Assiduidade": "red",
-            "Plantão": "brown",
-            "Licença Maternidade/Paternidade": "purple"
-        }
-
-        lista_eventos = []
-        for evento in self.eventos_ausencias:
-            data_fim_ajustada = (
-                datetime.strptime(evento.data_fim_evento, "%Y-%m-%d")
-                + timedelta(days=1)
-            ).strftime("%Y-%m-%d")
-
-            cor_evento = tipo_ausencia_cores.get(evento.tipo_ausencia, "gray")
-
-            lista_eventos.append(
-                {
-                    "title": f"{evento.tipo_ausencia}: {self.nome}",
-                    "start": evento.data_inicio_evento,
-                    "end": data_fim_ajustada,
-                    "resourceId": self.id,
-                    "color": cor_evento
-                }
-            )
-        return lista_eventos
+        return [
+            {
+                "title": f"{evento.tipo_ausencia}: {self.nome}",
+                "start": evento.data_inicio_evento,
+                "end": (
+                    date.fromisoformat(evento.data_fim_evento) + timedelta(days=1)
+                ).isoformat(),
+                "resourceId": self.id,
+                "color": self.TIPO_AUSENCIA_CORES.get(evento.tipo_ausencia, "grey")
+            }
+            for evento in self.eventos_ausencias
+        ]
 
     def adicionar_evento(self, inicio_evento, fim_evento, tipo_ausencia):
         data_inicio = datetime.strptime(inicio_evento, "%Y-%m-%d")
@@ -96,7 +88,7 @@ class Usuario(Base):
             session.add(ausencias)
             session.commit()
 
-    def ferias_a_solicitar(self):
+    def ferias_tiradas(self):
         dia_atual = datetime.now()
         inicio_na_empresa = datetime.strptime(self.inicio_na_empresa, "%Y-%m-%d")
         
@@ -104,23 +96,27 @@ class Usuario(Base):
         if (dia_atual - inicio_na_empresa).days < 365:
             return 0  
 
-        total_dias = (dia_atual - inicio_na_empresa).days * (30 / 365)
-
-        dias_tirados = sum(evento.total_dias for evento in self.eventos_ausencias if evento.tipo_ausencia == "Férias")
-
-        self.verificar_periodo_sem_ferias()
-
-        # Impõe o limite máximo de 30 dias de férias acumuladas
-        total_dias = min(total_dias, 30)
-
-        return int(total_dias - dias_tirados)
+        dias_tirados_no_ano_atual = 0
+        for evento in self.eventos_ausencias:
+            if evento.tipo_ausencia == "Férias":
+                data_inicio_evento = datetime.strptime(evento.data_inicio_evento, "%Y-%m-%d")
+                if data_inicio_evento.year == dia_atual.year:
+                    dias_tirados_no_ano_atual += evento.total_dias
+        
+        return dias_tirados_no_ano_atual
 
     def verificar_periodo_sem_ferias(self):
         dia_atual = datetime.now()
+
         ultimo_periodo_de_ferias = max(
-            (datetime.strptime(evento.data_fim_evento, "%Y-%m-%d") for evento in self.eventos_ausencias),
+            (
+                datetime.strptime(evento.data_fim_evento, "%Y-%m-%d") 
+                for evento in self.eventos_ausencias
+                if evento.tipo_ausencia == "Férias"
+            ),
             default=datetime.strptime(self.inicio_na_empresa, "%Y-%m-%d")
         )
+
         if (dia_atual - ultimo_periodo_de_ferias).days > 10 * 30:
             st.html("""
             <p style="font-size:13px; 
