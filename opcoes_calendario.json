@@ -2,9 +2,9 @@
     "editable": "true",
     "selectable": "true",
     "headerToolbar": {
-        "left": "today prev,next",
+        "left": "today",
         "center": "title",
-        "right": "dayGridMonth,resourceTimelineMonth"
+        "right": "prev,next"
     },
     "slotMinTime": "00:00:00",
     "slotMaxTime": "23:59:59",

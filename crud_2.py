@@ -3,10 +3,9 @@ from pathlib import Path
 from datetime import datetime, timedelta, date
 import streamlit as st
 
+from ldap3 import Server, Connection, ALL
 from sqlalchemy import create_engine, String, Boolean, Integer, select, ForeignKey, Enum
 from sqlalchemy.orm import mapped_column, DeclarativeBase, Mapped, Session, relationship
-from werkzeug.security import generate_password_hash, check_password_hash
-
 
 
 # Define o caminho para o diretório atual do Script #
@@ -32,12 +31,12 @@ engine = create_engine(f"sqlite:///{PATH_TO_BD}")
 
 
 # ============================ T A B E L A S ============================= #
-# Definição da Classe Base declarativa do SQLAlchemy
+# Definição da Classe Base declarativa do SQLAlchemy #
 class Base(DeclarativeBase):
     pass
 
 
-# Tabela de Usuários
+# Tabela de Usuários #
 class Usuario(Base):
     TIPO_AUSENCIA_CORES = {
         "Férias": "red",
@@ -51,7 +50,7 @@ class Usuario(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(80))
-    senha: Mapped[str] = mapped_column(String(128))
+    cod_funcional: Mapped[str] = mapped_column(String(8))
     email: Mapped[str] = mapped_column(String(60))
     acesso_gestor: Mapped[bool] = mapped_column(Boolean(), default=False)
     inicio_na_empresa: Mapped[str] = mapped_column(String(30))
@@ -60,14 +59,23 @@ class Usuario(Base):
         "Eventos", back_populates="usuario", lazy="subquery"
     )
 
-    def _repr_(self):
-        return f"Usuario({self.id!r}, nome={self.nome!r})"
+    def __repr__(self):
+        return f"Usuario({self.id!r}, {self.cod_funcional!r})"
 
-    def definir_senha(self, senha):
-        self.senha = generate_password_hash(senha)
+    def verificar_senha(self, cod_funcional, senha):
+        ldap_servidor = "ldap://mz-vv-dc-004.corp.bradesco.com.br:389"
+        ldap_funcional_usuario = f"corp\\{cod_funcional}"
+        ldap_senha = senha
 
-    def verificar_senha(self, senha):
-        return check_password_hash(self.senha, senha)
+        servidor = Server(ldap_servidor, get_info=ALL)
+        conexao = Connection(servidor, user=ldap_funcional_usuario, password=ldap_senha)
+
+        if conexao.bind():
+            print("Conectado!")
+            return True
+        else:
+            print("Credenciais inválidas!")
+            return False
 
     def listar_eventos_calendario(self):
         return [
@@ -87,23 +95,6 @@ class Usuario(Base):
             }
             for evento in self.eventos_ausencias
         ]
-
-    def adicionar_evento(self, inicio_evento, fim_evento, tipo_ausencia):
-        data_inicio = datetime.strptime(inicio_evento, "%Y-%m-%d")
-        data_fim = datetime.strptime(fim_evento, "%Y-%m-%d")
-
-        total_dias = (data_fim - data_inicio).days + 1
-
-        with Session(bind=engine) as session:
-            ausencias = Eventos(
-                id_usuario=self.id,
-                data_inicio_evento=inicio_evento,
-                data_fim_evento=fim_evento,
-                total_dias=total_dias,
-                tipo_ausencia=tipo_ausencia
-            )
-            session.add(ausencias)
-            session.commit()
 
     def ferias_tiradas(self):
         dia_atual = datetime.now()
@@ -146,7 +137,7 @@ class Usuario(Base):
             )
 
 
-# Tabela de Eventos
+# Tabela de Eventos #
 class Eventos(Base):
     __tablename__ = "tabela_eventos"
 
@@ -178,19 +169,21 @@ class Eventos(Base):
         nullable=False,
     )
 
-# Criando as tabelas definidas nas subclasses de Base no banco de dados
+
+# Criando as tabelas definidas nas subclasses de Base no banco de dados #
 Base.metadata.create_all(bind=engine)
 
 
 # =============================== C R U D =============================== #
-def criar_usuario(nome, senha, email, inicio_na_empresa, **kwargs):
-    # Converter para string se for objeto date ou datetime
-    if isinstance(inicio_na_empresa, (date, datetime)):
-        inicio_na_empresa = inicio_na_empresa.strftime("%Y-%m-%d")
-        
+def criar_usuario(nome, cod_funcional, email, inicio_na_empresa, **kwargs):
     with Session(bind=engine) as session:
-        usuario = Usuario(nome=nome, email=email, senha=senha, inicio_na_empresa=inicio_na_empresa, **kwargs)
-        usuario.definir_senha(senha)
+        usuario = Usuario(
+            nome=nome,
+            cod_funcional=cod_funcional.strip().lower(),
+            email=email,
+            inicio_na_empresa=inicio_na_empresa,
+            **kwargs,
+        )
         session.add(usuario)
         session.commit()
 
@@ -198,72 +191,57 @@ def criar_usuario(nome, senha, email, inicio_na_empresa, **kwargs):
 def ler_todos_usuarios():
     with Session(bind=engine) as session:
         comando_sql = select(Usuario)
-        usuarios = session.scalars(comando_sql).all()
+        usuarios = session.execute(comando_sql).fetchall()
+        usuarios = [usuario[0] for usuario in usuarios]
         return usuarios
 
 
 def ler_usuario_por_id(id):
     with Session(bind=engine) as session:
-        usuario = session.get(Usuario, id)
-        return usuario
+        comando_sql = select(Usuario).filter_by(id=id)
+        usuarios = session.execute(comando_sql).fetchall()
+        return usuarios[0][0]
 
 
 def modificar_usuario(id, **kwargs):
-    # Converter inicio_na_empresa para string se for objeto date ou datetime
-    if "inicio_na_empresa" in kwargs and isinstance(kwargs["inicio_na_empresa"], (date, datetime)):
-        kwargs["inicio_na_empresa"] = kwargs["inicio_na_empresa"].strftime("%Y-%m-%d")
-        
     with Session(bind=engine) as session:
-        usuario = session.get(Usuario, id)
-        if usuario:
+        comando_sql = select(Usuario).filter_by(id=id)
+        usuarios = session.execute(comando_sql).fetchall()
+        for usuario in usuarios:
             for key, value in kwargs.items():
-                if key == "senha":
-                    usuario.definir_senha(value)
-                else:
-                    setattr(usuario, key, value)
-            session.commit()
+                setattr(usuario[0], key, value)
+        session.commit()
 
 
 def deletar_usuario(id):
     with Session(bind=engine) as session:
-        usuario = session.get(Usuario, id)
-        if usuario:
-            session.delete(usuario)
-            session.commit()
+        comando_sql = select(Usuario).filter_by(id=id)
+        usuarios = session.execute(comando_sql).fetchall()
+        for usuario in usuarios:
+            session.delete(usuario[0])
+        session.commit()
 
 
 def ler_eventos_usuario():
     with Session(bind=engine) as session:
         comando_sql = select(Eventos)
-        eventos = session.scalars(comando_sql).all()
+        eventos = session.execute(comando_sql).fetchall()
+        eventos = [evento[0] for evento in eventos]
         return eventos
 
 
 def deletar_evento(id):
     with Session(bind=engine) as session:
-        evento = session.get(Eventos, id)
-        if evento:
-            session.delete(evento)
-            session.commit()
+        comando_sql = select(Eventos).filter_by(id=id)
+        usuarios = session.execute(comando_sql).fetchall()
+        for usuario in usuarios:
+            session.delete(usuario[0])
+        session.commit()
 
 
 def criar_evento(id_usuario, inicio_evento, fim_evento, tipo_ausencia, descricao=None, turno=None):
-    # Converter para string se forem objetos date ou datetime
-    if isinstance(inicio_evento, (date, datetime)):
-        inicio_evento = inicio_evento.strftime("%Y-%m-%d")
-    if isinstance(fim_evento, (date, datetime)):
-        fim_evento = fim_evento.strftime("%Y-%m-%d")
-        
-    # Converter para datetime para cálculo
-    data_inicio = datetime.strptime(inicio_evento, "%Y-%m-%d") if isinstance(inicio_evento, str) else inicio_evento
-    data_fim = datetime.strptime(fim_evento, "%Y-%m-%d") if isinstance(fim_evento, str) else fim_evento
-    
-    if isinstance(data_inicio, datetime) and isinstance(data_fim, datetime):
-        total_dias = (data_fim - data_inicio).days + 1
-    else:
-        # Fallback se algo der errado na conversão
-        total_dias = 1
-        
+    total_dias = (fim_evento - inicio_evento).days + 1
+
     with Session(bind=engine) as session:
         evento = Eventos(
             id_usuario=id_usuario,
@@ -279,12 +257,6 @@ def criar_evento(id_usuario, inicio_evento, fim_evento, tipo_ausencia, descricao
         
 
 def modificar_evento(id, **kwargs):
-    # Converter datas para string se forem objetos date ou datetime
-    if "data_inicio_evento" in kwargs and isinstance(kwargs["data_inicio_evento"], (date, datetime)):
-        kwargs["data_inicio_evento"] = kwargs["data_inicio_evento"].strftime("%Y-%m-%d")
-    if "data_fim_evento" in kwargs and isinstance(kwargs["data_fim_evento"], (date, datetime)):
-        kwargs["data_fim_evento"] = kwargs["data_fim_evento"].strftime("%Y-%m-%d")
-        
     with Session(bind=engine) as session:
         comando_sql = select(Eventos).filter_by(id=id)
         eventos = session.execute(comando_sql).fetchall()
@@ -292,14 +264,3 @@ def modificar_evento(id, **kwargs):
             for key, value in kwargs.items():
                 setattr(evento[0], key, value)
         session.commit()
-
-
-
-if __name__ == "__main__":
-    criar_usuario(
-        nome="Gestor",
-        email="gestor@gmail.com",
-        senha="gestor",
-        acesso_gestor=True,
-        inicio_na_empresa="2022-02-01"
-    )
