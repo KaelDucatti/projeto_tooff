@@ -98,7 +98,7 @@ Após a instalação das dependências, você pode iniciar a aplicação Streaml
 
 1.  Execute o comando a partir do diretório raiz do projeto:
     ```bash
-    streamlit run main.py
+    streamlit run webapp.py
     ```
     *(Substitua `main.py` pelo nome do seu arquivo Python principal, se for diferente)*
 
