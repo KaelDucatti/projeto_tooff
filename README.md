@@ -70,7 +70,7 @@ Siga estas instruções para obter uma cópia do projeto em execução na sua m�
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [https://github.com/KaelDucatti/projeto_tooff.git](https://github.com/KaelDucatti/projeto_tooff.git)
+    git clone https://github.com/KaelDucatti/projeto_tooff.git
     ```
 2.  **Navegue até o diretório do projeto:**
     ```bash
