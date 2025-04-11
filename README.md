@@ -68,7 +68,7 @@ Siga estas instruções para obter uma cópia do projeto em execução na sua m�
 
 ### Instalação
 
-1.  **Cried e Navegue até o diretório do projeto:**
+1.  **Crie e Navegue até o diretório do projeto:**
     ```bash
     mkdir projeto_tooff ; cd projeto_tooff         
     ```
