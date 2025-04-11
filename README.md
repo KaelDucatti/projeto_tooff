@@ -68,15 +68,21 @@ Siga estas instruções para obter uma cópia do projeto em execução na sua m�
 
 ### Instalação
 
-1.  **Clone o repositório:**
+1.  **Cried e Navegue até o diretório do projeto:**
+    ```bash
+    mkdir projeto_tooff ; cd projeto_tooff    ```
+
+2.  **Inicie o Git na pasta local do projeto:**
+```bash
+git init
+```
+
+3.  **Clone o repositório:**
     ```bash
     git clone https://github.com/KaelDucatti/projeto_tooff.git
     ```
-2.  **Navegue até o diretório do projeto:**
-    ```bash
-    cd projeto_tooff
-    ```
-3.  **Crie e ative um ambiente virtual (recomendado):**
+
+4.  **Crie e ative um ambiente virtual (recomendado):**
     ```bash
     # Linux/macOS
     python3 -m venv venv
@@ -86,7 +92,7 @@ Siga estas instruções para obter uma cópia do projeto em execução na sua m�
     python -m venv venv
     .\venv\Scripts\activate
     ```
-4.  **Instale as dependências:**
+5.  **Instale as dependências:**
     Certifique-se de que seu arquivo `requirements.txt` lista `streamlit` e todas as outras bibliotecas necessárias.
     ```bash
     pip install -r requirements.txt
