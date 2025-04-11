@@ -70,12 +70,13 @@ Siga estas instruções para obter uma cópia do projeto em execução na sua m�
 
 1.  **Cried e Navegue até o diretório do projeto:**
     ```bash
-    mkdir projeto_tooff ; cd projeto_tooff    ```
+    mkdir projeto_tooff ; cd projeto_tooff         
+    ```
 
 2.  **Inicie o Git na pasta local do projeto:**
-```bash
-git init
-```
+    ```bash
+    git init
+    ```
 
 3.  **Clone o repositório:**
     ```bash
